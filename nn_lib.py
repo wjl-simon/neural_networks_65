@@ -75,8 +75,11 @@ class CrossEntropyLossLayer(Layer):
         assert len(inputs) == len(y_target)
         n_obs = len(y_target)
         probs = self.softmax(inputs)
+        # y_target: the ground truth labels prob
+        # probs: the predicted prob, given by softmax
         self._cache_current = y_target, probs
 
+        # the cross-entropy loss H(y_target, probs)
         out = -1 / n_obs * np.sum(y_target * np.log(probs))
         return out
 
@@ -94,11 +97,26 @@ class SigmoidLayer(Layer):
     def __init__(self):
         self._cache_current = None
 
+    
+    @staticmethod
+    def sigmoid(x):
+        return 1 / (1 + np.exp(-1 * x))
+    
+    @staticmethod
+    def grad_sigmoid(x):
+        # gardient of sigmoid(x)
+        return np.multiply(SigmoidLayer.sigmoid(x), 1-SigmoidLayer.sigmoid(x))
+
+
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        # the gradient of sigmoid(x)
+        self._cache_current = self.grad_sigmoid(x)
+
+        return self.sigmoid(x)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -108,7 +126,9 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        # chain rule
+        return np.dot(np.transpose(self._cache_current),grad_z)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -122,12 +142,29 @@ class ReluLayer(Layer):
 
     def __init__(self):
         self._cache_current = None
+    
+
+    @staticmethod
+    def ReLu(x):
+        return np.maximum(0,x)
+    
+    @staticmethod
+    def gard_ReLu(x):
+        # gardient of ReLu(x)
+        x[x<=0] = 0
+        x[x>0] = 1
+        return x
 
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        # the gradient of RuLu(x)
+        self._cache_current = self.gard_ReLu(x)
+
+        return self.ReLu(x)
+
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -137,7 +174,9 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        # chain rule
+        return np.dot(np.transpose(self._cache_current),grad_z)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -162,11 +201,13 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._W = None
+        self._W = xavier_init((n_in,n_out)) # n_in by n_out matrix
         self._b = None
 
+        # the gradients of z with respect to x, _W and _b
         self._cache_current = None
-        self._grad_W_current = None
+        # the gradients of loss with respect to _W and _b
+        self._grad_W_current = None 
         self._grad_b_current = None
 
         #######################################################################
@@ -175,7 +216,7 @@ class LinearLayer(Layer):
 
     def forward(self, x):
         """
-        Performs forward pass through the layer (i.e. returns Wx + b).
+        Performs forward pass through the layer (i.e. returns xW + b).
 
         Logs information needed to compute gradient at a later stage in
         `_cache_current`.
@@ -189,7 +230,18 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        batch_size = x.shape[0] # num of examples (size of the batch)
+        self._b = np.ones(batch_size,self.n_out)    # bias term
+
+        # the affine transform z = x*_W + _b
+        z = np.add(np.dot(x,self._W), self._b)
+
+        # the gradients of z with respect to x, _W and _b
+        # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.in)
+        self._cache_current = np.transpose(self._W), x, np.ones(self.n_in)
+
+        return z
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -212,7 +264,15 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        # the gradients of z with respect to x, _W and _b
+        # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.in)
+        grad_z_wrt_x, grad_z_wrt_W, grad_z_wrt_b = self._cache_current
+
+        # chain rule
+        self._grad_W_current = np.dot(grad_z,grad_z_wrt_W)
+        self._grad_b_current = np.dot(grad_z_wrt_b,grad_z)
+        return np.dot(np.transpose(grad_z_wrt_x),grad_z)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -229,7 +289,9 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        self._W = self._W - self._grad_W_current * learning_rate
+        self._W = self._W - self._grad_b_current * learning_rate
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -259,7 +321,31 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._layers = None
+        self._layers = []
+
+        # N.B. Conventinally a linear layer + a non-linear layer together forms
+        # one single "layer", although the aforementioned code to some extent
+        # treats them as seperate layers
+
+        # the input layer
+        self._layers.append(LinearLayer(input_dim,neurons[0]))
+        if activations[0] == "relu":
+            self._layers.append(ReluLayer())
+        elif activations[0] == "sigmoid":
+            self._layers.append(SigmoidLayer())
+
+        # other layers
+        LEN = len(neurons)
+        for i in range(1,LEN):
+            # linear layer first
+            self._layers.append(LinearLayer(neurons[i-1],neurons[i]))
+            # then the nonlinear layer
+            if activations[i-1] == "relu":
+                self._layers.append(ReluLayer())
+            elif activations[i-1] == "sigmoid":
+                self._layers.append(SigmoidLayer())
+
+
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -278,7 +364,13 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        
+        for layer in self._layers:
+            # the output of layer L becomes input of layer L+1
+            x = layer.forward(x)
+
+        return x
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -302,7 +394,13 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        # backprop starts from the output layer
+        for layer in reversed(self._layers):
+            # the gradient in layer L becomes input of layer L-1
+            grad_z = layer.backward(grad_z)
+
+        return grad_z
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -319,7 +417,8 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        for layer in self._layers:
+            layer.update_params(learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
