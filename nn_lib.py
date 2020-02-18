@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-
+import math
 
 def xavier_init(size, gain=1.0):
     """
@@ -9,7 +9,6 @@ def xavier_init(size, gain=1.0):
     low = -gain * np.sqrt(6.0 / np.sum(size))
     high = gain * np.sqrt(6.0 / np.sum(size))
     return np.random.uniform(low=low, high=high, size=size)
-
 
 class Layer:
     """
@@ -128,7 +127,7 @@ class SigmoidLayer(Layer):
         #######################################################################
         
         # chain rule
-        return np.dot(np.transpose(self._cache_current),grad_z)
+        return np.multiply(self._cache_current,grad_z)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -176,7 +175,7 @@ class ReluLayer(Layer):
         #######################################################################
         
         # chain rule
-        return np.dot(np.transpose(self._cache_current),grad_z)
+        return np.multiply(self._cache_current,grad_z)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -202,7 +201,7 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         self._W = xavier_init((n_in,n_out)) # n_in by n_out matrix
-        self._b = None
+        self._b = None # the size of b is batch_size by n_out
 
         # the gradients of z with respect to x, _W and _b
         self._cache_current = None
@@ -230,16 +229,25 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+        assert x.shape[1] == self.n_in, print('Wrong dimension for the lieaner \
+            layer.')
         
+
         batch_size = x.shape[0] # num of examples (size of the batch)
-        self._b = np.ones(batch_size,self.n_out)    # bias term
+        self._b = xavier_init((batch_size,self.n_out))  # bias term
 
         # the affine transform z = x*_W + _b
-        z = np.add(np.dot(x,self._W), self._b)
+        z = np.dot(x,self._W) + self._b
+
+        # print('size of z is {}'.format(z.shape))
+        # print('size of W is {}'.format(self._W.shape))
+        # print('size of x is {}'.format(x.shape))
+        # print('size of b is {}'.format(self._b.shape))
 
         # the gradients of z with respect to x, _W and _b
         # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.in)
-        self._cache_current = np.transpose(self._W), x, np.ones(self.n_in)
+        self._cache_current = self._W, x, np.ones((self.n_out,self.n_out))
 
         return z
 
@@ -269,10 +277,15 @@ class LinearLayer(Layer):
         # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.in)
         grad_z_wrt_x, grad_z_wrt_W, grad_z_wrt_b = self._cache_current
 
+        # print('size of grad_z is {}'.format(grad_z.shape))
+        # print('size of grad_z_wrt_x is {}'.format(grad_z_wrt_x.shape))
+        # print('size of grad_z_wrt_W is {}'.format(grad_z_wrt_W.shape))
+        # print('size of grad_z_wrt_b is {}'.format(grad_z_wrt_b.shape))
+
         # chain rule
-        self._grad_W_current = np.dot(grad_z,grad_z_wrt_W)
-        self._grad_b_current = np.dot(grad_z_wrt_b,grad_z)
-        return np.dot(np.transpose(grad_z_wrt_x),grad_z)
+        self._grad_W_current = np.dot(np.transpose(grad_z_wrt_W),grad_z)
+        self._grad_b_current = np.dot(grad_z,grad_z_wrt_b)
+        return np.dot(grad_z,np.transpose(grad_z_wrt_x))
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -291,7 +304,7 @@ class LinearLayer(Layer):
         #######################################################################
         
         self._W = self._W - self._grad_W_current * learning_rate
-        self._W = self._W - self._grad_b_current * learning_rate
+        self._b = self._b - self._grad_b_current * learning_rate
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -478,7 +491,10 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._loss_layer = None
+        if loss_fun == "mse":
+            self._loss_layer = MSELossLayer()
+        elif loss_fun == "cross_entropy":
+            self._loss_layer = CrossEntropyLossLayer()
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -499,7 +515,11 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        # guide to shuffling via array indexing courtesy of below
+        # https://stackoverflow.com/questions/4601373/better-way-to-shuffle-two-numpy-arrays-in-unison
+        assert len(input_dataset) == len(target_dataset)
+        pos = np.random.permutation(len(input_dataset))
+        return input_dataset[pos], target_dataset[pos]
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -528,7 +548,25 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        number_input_col = input_dataset.shape[0]
+        numberOfBatches = math.ceil(number_input_col/self.batch_size)
+
+        for epoch in range(self.nb_epoch):
+            if self.shuffle_flag == True:
+                input_dataset , target_dataset = self.shuffle(input_dataset, target_dataset)
+
+            # Split dataset into selected size
+            # Array split guide found here: https://numpy.org/doc/1.18/reference/generated/numpy.array_split.html
+            input_dataset_batches = np.array_split(input_dataset, numberOfBatches, axis = 0)
+            target_dataset_batches = np.array_split(target_dataset, numberOfBatches, axis = 0)
+
+            for input_batch, output_batch in zip(input_dataset_batches, target_dataset_batches):
+                fwdPredictedOutput = self.network.forward(input_batch)
+                number = self._loss_layer.forward(fwdPredictedOutput, output_batch)
+                gradLossWrtY = self._loss_layer.backward()
+                # # Something about this, not sure right or not.
+                self.network.backward(gradLossWrtY)
+                self.network.update_params(self.learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -547,7 +585,8 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        fwdPredictedOutput = self.network.forward(input_dataset)
+        return self._loss_layer.forward(fwdPredictedOutput, target_dataset)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -572,7 +611,8 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self.maxValue = np.max(data, axis = 0)
+        self.minValue = np.min(data, axis = 0)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -591,7 +631,7 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        return (data - self.minValue) / (self.maxValue - self.minValue)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -610,7 +650,7 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        return (data * (self.maxValue - self.minValue)) + self.minValue
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -619,11 +659,12 @@ class Preprocessor(object):
 
 def example_main():
     input_dim = 4
-    neurons = [16, 3]
-    activations = ["relu", "identity"]
+    neurons = [16, 10, 7, 3]
+    activations = ["relu", "relu","identity","sigmoid"]
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
+
     np.random.shuffle(dat)
 
     x = dat[:, :4]
@@ -640,6 +681,7 @@ def example_main():
 
     x_train_pre = prep_input.apply(x_train)
     x_val_pre = prep_input.apply(x_val)
+
 
     trainer = Trainer(
         network=net,
