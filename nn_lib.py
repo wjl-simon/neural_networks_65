@@ -104,7 +104,8 @@ class SigmoidLayer(Layer):
     @staticmethod
     def grad_sigmoid(x):
         # gardient of sigmoid(x)
-        return np.multiply(SigmoidLayer.sigmoid(x), 1-SigmoidLayer.sigmoid(x))
+        temp = SigmoidLayer.sigmoid(x)
+        return np.multiply(temp, 1-temp)
 
 
     def forward(self, x):
@@ -150,9 +151,9 @@ class ReluLayer(Layer):
     @staticmethod
     def gard_relu(x):
         # gardient of ReLu(x)
-        x[x<=0] = 0
-        x[x>0] = 1
-        return x
+        u = np.zeros_like(x)
+        u[x>0] = 1
+        return u
 
     def forward(self, x):
         #######################################################################
