@@ -97,15 +97,15 @@ class SigmoidLayer(Layer):
         self._cache_current = None
 
     
-    @staticmethod
-    def sigmoid(x):
-        return 1 / (1 + np.exp(-x))
+    # @staticmethod
+    # def sigmoid(x):
+    #     return 1 / (1 + np.exp(-x))
     
-    @staticmethod
-    def grad_sigmoid(x):
-        # gardient of sigmoid(x)
-        temp = SigmoidLayer.sigmoid(x)
-        return np.multiply(temp, 1-temp)
+    # @staticmethod
+    # def grad_sigmoid(x):
+    #     # gardient of sigmoid(x)
+    #     temp = SigmoidLayer.sigmoid(x)
+    #     return np.multiply(temp, 1-temp)
 
 
     def forward(self, x):
@@ -114,9 +114,14 @@ class SigmoidLayer(Layer):
         #######################################################################
         
         # the gradient of sigmoid(x)
-        self._cache_current = self.grad_sigmoid(x)
+        #self._cache_current = self.grad_sigmoid(x)
 
-        return self.sigmoid(x)
+        #return self.sigmoid(x)
+        temp = 1 / (1 + np.exp(-x))
+        self._cache_current = np.multiply(temp, 1-temp)
+        return temp
+
+        
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -127,6 +132,10 @@ class SigmoidLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
+        assert grad_z.shape == self._cache_current.shape,\
+             print('Wrong dimension in the sigmoid layer: grad_z is {}, \
+                 grad_sigmoid is {}.'.format(grad_z.shape,self._cache_current.shape))
+
         # chain rule
         return np.multiply(self._cache_current,grad_z)
 
@@ -144,16 +153,16 @@ class ReluLayer(Layer):
         self._cache_current = None
     
 
-    @staticmethod
-    def relu(x):
-        return np.maximum(0,x)
+    # @staticmethod
+    # def relu(x):
+    #     return np.maximum(0,x)
     
-    @staticmethod
-    def gard_relu(x):
-        # gardient of ReLu(x)
-        u = np.zeros_like(x)
-        u[x>0] = 1
-        return u
+    # @staticmethod
+    # def gard_relu(x):
+    #     # gardient of ReLu(x)
+    #     u = np.zeros_like(x)
+    #     u[x>0] = 1
+    #     return u
 
     def forward(self, x):
         #######################################################################
@@ -161,10 +170,17 @@ class ReluLayer(Layer):
         #######################################################################
         
         # the gradient of RuLu(x)
-        self._cache_current = self.gard_relu(x)
+        #self._cache_current = self.gard_relu(x)
 
-        return self.relu(x)
+        #return self.relu(x)
 
+        x = np.maximum(0,x)
+        
+        u = np.zeros_like(x)
+        u[x > 0] = 1
+        self._cache_current = u
+
+        return x
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -174,7 +190,10 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        
+        assert grad_z.shape == self._cache_current.shape,\
+             print('Wrong dimension in the relu layer: grad_z is {}, \
+                 grad_relu is {}.'.format(grad_z.shape,self._cache_current.shape))
+
         # chain rule
         return np.multiply(self._cache_current,grad_z)
 
@@ -231,8 +250,8 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        # assert x.shape[1] == self.n_in,\
-        #      print('Wrong dimension for the lieaner layer.')
+        assert x.shape[1] == self.n_in,\
+             print('Wrong dimension for the lieaner layer.')
         
 
         batch_size = x.shape[0] # num of examples (size of the batch)
@@ -273,10 +292,22 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        
+
         # the gradients of z with respect to x, _W and _b
         # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.in)
         grad_z_wrt_x, grad_z_wrt_W, grad_z_wrt_b = self._cache_current
+
+        assert grad_z.shape[1] == grad_z_wrt_x.shape[1],\
+             print('Wrong dimension in the lieaner layer: grad_z is {}, \
+                 grad_z_wrt_x is {}.'.format(grad_z.shape,grad_z_wrt_x.shape))
+        
+        assert grad_z.shape[0] == grad_z_wrt_W.shape[0],\
+             print('Wrong dimension in the lieaner layer: grad_z is {}, \
+                 grad_z_wrt_W is {}.'.format(grad_z.shape,grad_z_wrt_W.shape))
+        
+        assert grad_z.shape[1] == grad_z_wrt_b.shape[0],\
+             print('Wrong dimension in the lieaner layer: grad_z is {}, \
+                 grad_z_wrt_b is {}.'.format(grad_z.shape,grad_z_wrt_b.shape))
 
         # print('size of grad_z is {}'.format(grad_z.shape))
         # print('size of grad_z_wrt_x is {}'.format(grad_z_wrt_x.shape))
