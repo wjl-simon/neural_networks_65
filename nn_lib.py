@@ -230,8 +230,8 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        assert x.shape[1] == self.n_in,\
-             print('Wrong dimension for the lieaner layer.')
+        # assert x.shape[1] == self.n_in,\
+        #      print('Wrong dimension for the lieaner layer.')
         
 
         batch_size = x.shape[0] # num of examples (size of the batch)
