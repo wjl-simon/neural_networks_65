@@ -99,7 +99,7 @@ class SigmoidLayer(Layer):
     
     @staticmethod
     def sigmoid(x):
-        return 1 / (1 + np.exp(-1 * x))
+        return 1 / (1 + np.exp(-x))
     
     @staticmethod
     def grad_sigmoid(x):
@@ -121,7 +121,7 @@ class SigmoidLayer(Layer):
         #                       ** END OF YOUR CODE **
         #######################################################################
 
-    def backward(self, grad_z):
+    def backward(self, grad_z): # actually, @param grad_z should be grad_loss_wrt_x
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
@@ -144,11 +144,11 @@ class ReluLayer(Layer):
     
 
     @staticmethod
-    def ReLu(x):
+    def relu(x):
         return np.maximum(0,x)
     
     @staticmethod
-    def gard_ReLu(x):
+    def gard_relu(x):
         # gardient of ReLu(x)
         x[x<=0] = 0
         x[x>0] = 1
@@ -160,16 +160,16 @@ class ReluLayer(Layer):
         #######################################################################
         
         # the gradient of RuLu(x)
-        self._cache_current = self.gard_ReLu(x)
+        self._cache_current = self.gard_relu(x)
 
-        return self.ReLu(x)
+        return self.relu(x)
 
 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
 
-    def backward(self, grad_z):
+    def backward(self, grad_z): # actually, @param grad_z should be grad_loss_wrt_x
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
@@ -230,8 +230,8 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        assert x.shape[1] == self.n_in, print('Wrong dimension for the lieaner \
-            layer.')
+        assert x.shape[1] == self.n_in,\
+             print('Wrong dimension for the lieaner layer.')
         
 
         batch_size = x.shape[0] # num of examples (size of the batch)
@@ -246,7 +246,7 @@ class LinearLayer(Layer):
         # print('size of b is {}'.format(self._b.shape))
 
         # the gradients of z with respect to x, _W and _b
-        # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.in)
+        # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.out)
         self._cache_current = self._W, x, np.ones((self.n_out,self.n_out))
 
         return z
@@ -410,7 +410,8 @@ class MultiLayerNetwork(object):
 
         # backprop starts from the output layer
         for layer in reversed(self._layers):
-            # the gradient in layer L becomes input of layer L-1
+            # the gradient of loss wrt z or x in layer L becomes the 
+            # input to layer L-1
             grad_z = layer.backward(grad_z)
 
         return grad_z
@@ -430,7 +431,7 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        for layer in self._layers:
+        for layer in reversed(self._layers):
             layer.update_params(learning_rate)
 
         #######################################################################
@@ -659,8 +660,9 @@ class Preprocessor(object):
 
 def example_main():
     input_dim = 4
-    neurons = [16, 10, 7, 3]
-    activations = ["relu", "relu","identity","sigmoid"]
+    neurons = [16, 3]
+    activations = ["relu", "identity"]
+
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
