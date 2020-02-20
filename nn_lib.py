@@ -96,29 +96,16 @@ class SigmoidLayer(Layer):
     def __init__(self):
         self._cache_current = None
 
-    
-    # @staticmethod
-    # def sigmoid(x):
-    #     return 1 / (1 + np.exp(-x))
-    
-    # @staticmethod
-    # def grad_sigmoid(x):
-    #     # gardient of sigmoid(x)
-    #     temp = SigmoidLayer.sigmoid(x)
-    #     return np.multiply(temp, 1-temp)
-
 
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
         
-        # the gradient of sigmoid(x)
-        #self._cache_current = self.grad_sigmoid(x)
-
-        #return self.sigmoid(x)
         temp = 1 / (1 + np.exp(-x))
+        # the gradient of sigmoid(x)
         self._cache_current = np.multiply(temp, 1-temp)
+
         return temp
 
         
@@ -151,31 +138,16 @@ class ReluLayer(Layer):
 
     def __init__(self):
         self._cache_current = None
-    
 
-    # @staticmethod
-    # def relu(x):
-    #     return np.maximum(0,x)
-    
-    # @staticmethod
-    # def gard_relu(x):
-    #     # gardient of ReLu(x)
-    #     u = np.zeros_like(x)
-    #     u[x>0] = 1
-    #     return u
 
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
         
-        # the gradient of RuLu(x)
-        #self._cache_current = self.gard_relu(x)
-
-        #return self.relu(x)
-
         x = np.maximum(0,x)
-        
+
+        # the gradient of RuLu(x)
         u = np.zeros_like(x)
         u[x > 0] = 1
         self._cache_current = u
@@ -260,10 +232,10 @@ class LinearLayer(Layer):
         # the affine transform z = x*_W + _b
         z = np.dot(x,self._W) + self._b
 
-        # print('size of z is {}'.format(z.shape))
-        # print('size of W is {}'.format(self._W.shape))
-        # print('size of x is {}'.format(x.shape))
-        # print('size of b is {}'.format(self._b.shape))
+        print('size of z is {}'.format(z.shape))
+        print('size of W is {}'.format(self._W.shape))
+        print('size of x is {}'.format(x.shape))
+        print('size of b is {}'.format(self._b.shape))
 
         # the gradients of z with respect to x, _W and _b
         # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.out)
@@ -309,10 +281,10 @@ class LinearLayer(Layer):
              print('Wrong dimension in the lieaner layer: grad_z is {}, \
                  grad_z_wrt_b is {}.'.format(grad_z.shape,grad_z_wrt_b.shape))
 
-        # print('size of grad_z is {}'.format(grad_z.shape))
-        # print('size of grad_z_wrt_x is {}'.format(grad_z_wrt_x.shape))
-        # print('size of grad_z_wrt_W is {}'.format(grad_z_wrt_W.shape))
-        # print('size of grad_z_wrt_b is {}'.format(grad_z_wrt_b.shape))
+        print('size of grad_z is {}'.format(grad_z.shape))
+        print('size of grad_z_wrt_x is {}'.format(grad_z_wrt_x.shape))
+        print('size of grad_z_wrt_W is {}'.format(grad_z_wrt_W.shape))
+        print('size of grad_z_wrt_b is {}'.format(grad_z_wrt_b.shape))
 
         # chain rule
         self._grad_W_current = np.dot(np.transpose(grad_z_wrt_W),grad_z)
