@@ -223,7 +223,7 @@ class LinearLayer(Layer):
         #######################################################################
 
         assert x.shape[1] == self.n_in,\
-             print('Wrong dimension for the lieaner layer.')
+             print('Wrong dimension for the lieaner layer. now the dim for input is {}, n_in is {}'.format(x.shape[1],self.n_in))
         
 
         batch_size = x.shape[0] # num of examples (size of the batch)
@@ -232,10 +232,10 @@ class LinearLayer(Layer):
         # the affine transform z = x*_W + _b
         z = np.dot(x,self._W) + self._b
 
-        print('size of z is {}'.format(z.shape))
-        print('size of W is {}'.format(self._W.shape))
-        print('size of x is {}'.format(x.shape))
-        print('size of b is {}'.format(self._b.shape))
+        # print('size of z is {}'.format(z.shape))
+        # print('size of W is {}'.format(self._W.shape))
+        # print('size of x is {}'.format(x.shape))
+        # print('size of b is {}'.format(self._b.shape))
 
         # the gradients of z with respect to x, _W and _b
         # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.out)
@@ -281,10 +281,10 @@ class LinearLayer(Layer):
              print('Wrong dimension in the lieaner layer: grad_z is {}, \
                  grad_z_wrt_b is {}.'.format(grad_z.shape,grad_z_wrt_b.shape))
 
-        print('size of grad_z is {}'.format(grad_z.shape))
-        print('size of grad_z_wrt_x is {}'.format(grad_z_wrt_x.shape))
-        print('size of grad_z_wrt_W is {}'.format(grad_z_wrt_W.shape))
-        print('size of grad_z_wrt_b is {}'.format(grad_z_wrt_b.shape))
+        # print('size of grad_z is {}'.format(grad_z.shape))
+        # print('size of grad_z_wrt_x is {}'.format(grad_z_wrt_x.shape))
+        # print('size of grad_z_wrt_W is {}'.format(grad_z_wrt_W.shape))
+        # print('size of grad_z_wrt_b is {}'.format(grad_z_wrt_b.shape))
 
         # chain rule
         self._grad_W_current = np.dot(np.transpose(grad_z_wrt_W),grad_z)
@@ -386,7 +386,6 @@ class MultiLayerNetwork(object):
         for layer in self._layers:
             # the output of layer L becomes input of layer L+1
             x = layer.forward(x)
-
         return x
 
         #######################################################################
