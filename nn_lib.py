@@ -101,7 +101,8 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        
+        print('size of the input to this sigmoid layer is {}'.format(x.shape))
+
         temp = 1 / (1 + np.exp(-x))
         # the gradient of sigmoid(x)
         self._cache_current = np.multiply(temp, 1-temp)
@@ -144,7 +145,8 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        
+        print('size of the input to this relu layer is {}'.format(x.shape))
+
         x = np.maximum(0,x)
 
         # the gradient of RuLu(x)
@@ -234,7 +236,7 @@ class LinearLayer(Layer):
 
         # print('size of z is {}'.format(z.shape))
         # print('size of W is {}'.format(self._W.shape))
-        # print('size of x is {}'.format(x.shape))
+        print('size of the input to this linear layer is {}'.format(x.shape))
         # print('size of b is {}'.format(self._b.shape))
 
         # the gradients of z with respect to x, _W and _b
