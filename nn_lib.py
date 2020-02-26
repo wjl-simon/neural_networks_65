@@ -385,7 +385,11 @@ class MultiLayerNetwork(object):
             # the output of layer L becomes input of layer L+1
             if isinstance(layer,LinearLayer):
                 print('the shappe of the input to a linear layer (LAYER {}) is {}'.format(i,x.shape))
-                
+            elif isinstance(layer,ReluLayer):
+                print('the shappe of the input to a relu layer (LAYER {}) is {}'.format(i,x.shape))
+            elif isinstance(layer,SigmoidLayer):
+                print('the shappe of the input to a sigmoid layer (LAYER {}) is {}'.format(i,x.shape))
+
             x = layer.forward(x)
         return x
 
