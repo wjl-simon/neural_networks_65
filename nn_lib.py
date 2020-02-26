@@ -381,10 +381,11 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
-        
-        for layer in self._layers:
+        for i, layer in enumerate(self._layers):
             # the output of layer L becomes input of layer L+1
+            if isinstance(layer,LinearLayer):
+                print('the shappe of the input to a linear layer (LAYER {}) is {}'.format(i,x.shape))
+                
             x = layer.forward(x)
         return x
 
