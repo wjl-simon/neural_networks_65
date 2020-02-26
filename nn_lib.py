@@ -101,7 +101,6 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        print('size of the input to this sigmoid layer is {}'.format(x.shape))
 
         temp = 1 / (1 + np.exp(-x))
         # the gradient of sigmoid(x)
@@ -145,7 +144,6 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        print('size of the input to this relu layer is {}'.format(x.shape))
 
         x = np.maximum(0,x)
 
@@ -225,7 +223,8 @@ class LinearLayer(Layer):
         #######################################################################
 
         assert x.shape[1] == self.n_in,\
-             print('Wrong dimension for the lieaner layer. now the dim for input is {}, n_in is {}'.format(x.shape[1],self.n_in))
+             print('Wrong dimension for the linear layer. now the dim for the \
+                 input is {}, n_in is {}'.format(x.shape[1],self.n_in))
         
 
         batch_size = x.shape[0] # num of examples (size of the batch)
@@ -236,7 +235,7 @@ class LinearLayer(Layer):
 
         # print('size of z is {}'.format(z.shape))
         # print('size of W is {}'.format(self._W.shape))
-        print('size of the input to this linear layer is {}'.format(x.shape))
+        # print('size of the input to this linear layer is {}'.format(x.shape))
         # print('size of b is {}'.format(self._b.shape))
 
         # the gradients of z with respect to x, _W and _b
@@ -385,12 +384,12 @@ class MultiLayerNetwork(object):
         #######################################################################
         for i, layer in enumerate(self._layers):
             # the output of layer L becomes input of layer L+1
-            if isinstance(layer,LinearLayer):
-                print('the shappe of the input to a linear layer (LAYER {}) is {}'.format(i,x.shape))
-            elif isinstance(layer,ReluLayer):
-                print('the shappe of the input to a relu layer (LAYER {}) is {}'.format(i,x.shape))
-            elif isinstance(layer,SigmoidLayer):
-                print('the shappe of the input to a sigmoid layer (LAYER {}) is {}'.format(i,x.shape))
+            # if isinstance(layer,LinearLayer):
+            #     print('the shappe of the input to a linear layer (LAYER {}) is {}'.format(i,x.shape))
+            # elif isinstance(layer,ReluLayer):
+            #     print('the shappe of the input to a relu layer (LAYER {}) is {}'.format(i,x.shape))
+            # elif isinstance(layer,SigmoidLayer):
+            #     print('the shappe of the input to a sigmoid layer (LAYER {}) is {}'.format(i,x.shape))
 
             x = layer.forward(x)
         return x
