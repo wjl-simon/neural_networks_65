@@ -193,9 +193,7 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         self._W = xavier_init((n_in,n_out)) # n_in by n_out matrix
-        # self._b = None # the size of b is batch_size by n_out
-        # self._is_b_init = False # false if _b hasn' be initilised
-        self._b = xavier_init((1,self.n_out))  # bias term
+        self._b = xavier_init((1,self.n_out))  # bias term, shape of 1 by n_out
 
         # the gradients of z with respect to x, _W and _b
         self._cache_current = None
@@ -229,25 +227,10 @@ class LinearLayer(Layer):
                  input is {}, n_in is {}'.format(x.shape[1],self.n_in))
         
 
-        batch_size = x.shape[0] # num of examples (size of the batch)
-        
-        # if self._is_b_init == False:
-        #     self._b = xavier_init((batch_size,self.n_out))  # bias term
-        #     self._is_b_init = True
-
-        # print('shape of b {}'.format(self._b.shape))
-        # print('dot {}'.format(np.dot(x,self._W).shape))
-
-
+        #batch_size = x.shape[0] # num of examples (size of the batch)
 
         # the affine transform z = x*_W + _b
         z = np.dot(x,self._W) + self._b
-
-
-        # print('size of z is {}'.format(z.shape))
-        # print('size of W is {}'.format(self._W.shape))
-        # print('size of the input to this linear layer is {}'.format(x.shape))
-        # print('size of b is {}'.format(self._b.shape))
 
         # the gradients of z with respect to x, _W and _b
         # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n_out,n.out)
@@ -295,15 +278,11 @@ class LinearLayer(Layer):
              print('Wrong dimension in the lieaner layer: grad_z is {}, \
                  grad_z_wrt_b is {}.'.format(grad_z.shape,grad_z_wrt_b.shape))
 
-        # print('size of grad_z is {}'.format(grad_z.shape))
-        # print('size of grad_z_wrt_x is {}'.format(grad_z_wrt_x.shape))
-        # print('size of grad_z_wrt_W is {}'.format(grad_z_wrt_W.shape))
-        # print('size of grad_z_wrt_b is {}'.format(grad_z_wrt_b.shape))
-
         # chain rule
         self._grad_W_current = np.dot(np.transpose(grad_z_wrt_W),grad_z)
+        # sum over different data points, remember that _b is a 1-d vector
         self._grad_b_current = np.sum(np.dot(grad_z,grad_z_wrt_b),axis=0)
-        #print(self._grad_b_current.shape)
+        
         return np.dot(grad_z,np.transpose(grad_z_wrt_x))
 
         #######################################################################
@@ -396,15 +375,8 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        for i, layer in enumerate(self._layers):
+        for layer in self._layers:
             # the output of layer L becomes input of layer L+1
-            # if isinstance(layer,LinearLayer):
-            #     print('the shappe of the input to a linear layer (LAYER {}) is {}'.format(i,x.shape))
-            # elif isinstance(layer,ReluLayer):
-            #     print('the shappe of the input to a relu layer (LAYER {}) is {}'.format(i,x.shape))
-            # elif isinstance(layer,SigmoidLayer):
-            #     print('the shappe of the input to a sigmoid layer (LAYER {}) is {}'.format(i,x.shape))
-
             x = layer.forward(x)
         return x
 
@@ -612,21 +584,6 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        print('size of test set is {}'.format(input_dataset.shape))
-
-        # output = np.empty((self.batch_size))
-
-        # epoch_nb_test = math.floor(input_dataset.shape[0]/self.batch_size)
-
-        # out = np.array((self.batch_size,epoch_nb_test))
-
-        # for i in range(epoch_nb_test):
-        #     batch_test_data = input_dataset[self.batch_size*i:self.batch_size*i+self.batch_size]
-        #     batch_test_label = target_dataset[self.batch_size*i:self.batch_size*i+self.batch_size]
-        #     pred = self.network.forward(batch_test_data)
-        #     output[i] = self._loss_layer.forward(pred, batch_test_label)
-
-        # output.flatten()
 
         fwdPredictedOutput = self.network.forward(input_dataset)
         return self._loss_layer.forward(fwdPredictedOutput, target_dataset)
