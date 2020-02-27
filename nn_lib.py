@@ -74,11 +74,8 @@ class CrossEntropyLossLayer(Layer):
         assert len(inputs) == len(y_target)
         n_obs = len(y_target)
         probs = self.softmax(inputs)
-        # y_target: the ground truth labels prob
-        # probs: the predicted prob, given by softmax
         self._cache_current = y_target, probs
 
-        # the cross-entropy loss H(y_target, probs)
         out = -1 / n_obs * np.sum(y_target * np.log(probs))
         return out
 
@@ -108,17 +105,16 @@ class SigmoidLayer(Layer):
 
         return temp
 
-        
-
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
 
-    def backward(self, grad_z): # actually, @param grad_z should be grad_loss_wrt_x
+    def backward(self, grad_z): 
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
         
+        # actually, @param grad_z should be grad_loss_wrt_x
         assert grad_z.shape == self._cache_current.shape,\
              print('Wrong dimension in the sigmoid layer: grad_z is {}, \
                  grad_sigmoid is {}.'.format(grad_z.shape,self._cache_current.shape))
@@ -147,7 +143,7 @@ class ReluLayer(Layer):
 
         x = np.maximum(0,x)
 
-        # the gradient of RuLu(x)
+        # the gradient of RuLu(temp)
         u = np.zeros_like(x)
         u[x > 0] = 1
         self._cache_current = u
@@ -230,13 +226,11 @@ class LinearLayer(Layer):
         #batch_size = x.shape[0] # num of examples (size of the batch)
 
         # the affine transform z = x*_W + _b
-        z = np.dot(x,self._W) + self._b
+        z = np.dot(x,self._W) + self._b # numpy array broadcasting
 
         # the gradients of z with respect to x, _W and _b
         # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n_out,n.out)
         self._cache_current = self._W, x, np.ones((self.n_out,self.n_out))
-        
-        # self._cache_current = self._W, x, np.ones((self.n_out,1))
 
         return z
 
@@ -281,7 +275,8 @@ class LinearLayer(Layer):
         # chain rule
         self._grad_W_current = np.dot(np.transpose(grad_z_wrt_W),grad_z)
         # sum over different data points, remember that _b is a 1-d vector
-        self._grad_b_current = np.sum(np.dot(grad_z,grad_z_wrt_b),axis=0)
+        #self._grad_b_current = np.sum(np.dot(grad_z,grad_z_wrt_b),axis=0)
+        self._grad_b_current = np.average(np.dot(grad_z,grad_z_wrt_b),axis=0)
         
         return np.dot(grad_z,np.transpose(grad_z_wrt_x))
 
@@ -332,29 +327,29 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._layers = []
 
         # N.B. Conventinally a linear layer + a non-linear layer together forms
         # one single "layer", although the aforementioned code to some extent
         # treats them as seperate layers
 
-        # the input layer
-        self._layers.append(LinearLayer(input_dim,neurons[0]))
-        if activations[0] == "relu":
-            self._layers.append(ReluLayer())
-        elif activations[0] == "sigmoid":
-            self._layers.append(SigmoidLayer())
+        self._layers = []
 
-        # other layers
         LEN = len(neurons)
-        for i in range(1,LEN):
+        for i in range(LEN):
             # linear layer first
-            self._layers.append(LinearLayer(neurons[i-1],neurons[i]))
-            # then the nonlinear layer
-            if activations[i-1] == "relu":
+            if i == 0:
+                # the input layer
+                self._layers.append(LinearLayer(input_dim,neurons[0]))
+            else:
+                # hidden layer
+                self._layers.append(LinearLayer(neurons[i-1],neurons[i]))
+            # then the activation layer
+            if activations[i] == "relu":
                 self._layers.append(ReluLayer())
-            elif activations[i-1] == "sigmoid":
+            elif activations[i] == "sigmoid":
                 self._layers.append(SigmoidLayer())
+            elif activations[i] == "identity":
+                self._layers.append("identity") # dummpy layer
 
 
         #######################################################################
@@ -377,7 +372,10 @@ class MultiLayerNetwork(object):
         #######################################################################
         for layer in self._layers:
             # the output of layer L becomes input of layer L+1
-            x = layer.forward(x)
+            if isinstance(layer,Layer):
+                x = layer.forward(x)
+            # elif isinstance(layer,str):
+            #     continue
         return x
 
         #######################################################################
@@ -407,7 +405,8 @@ class MultiLayerNetwork(object):
         for layer in reversed(self._layers):
             # the gradient of loss wrt z or x in layer L becomes the 
             # input to layer L-1
-            grad_z = layer.backward(grad_z)
+            if isinstance(layer,Layer):
+                grad_z = layer.backward(grad_z)
 
         return grad_z
 
@@ -427,7 +426,8 @@ class MultiLayerNetwork(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         for layer in reversed(self._layers):
-            layer.update_params(learning_rate)
+            if isinstance(layer,Layer): # an identity layer has no update_params()
+                layer.update_params(learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -546,9 +546,6 @@ class Trainer(object):
         #######################################################################
         number_input_col = input_dataset.shape[0]
         numberOfBatches = math.ceil(number_input_col/self.batch_size)
-        print('number of samples {}'.format(number_input_col))
-        print('batch size {}'.format(self.batch_size))
-        print('number of batches {}'.format(numberOfBatches))
 
         for epoch in range(self.nb_epoch):
             if self.shuffle_flag == True:
