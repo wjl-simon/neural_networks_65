@@ -1,7 +1,14 @@
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
 import pickle
 import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import ClaimClassifier from part2_claim_classifier.py
 
 
 def fit_and_calibrate_classifier(classifier, X, y):
@@ -14,6 +21,7 @@ def fit_and_calibrate_classifier(classifier, X, y):
     calibrated_classifier = CalibratedClassifierCV(
         classifier, method='sigmoid', cv='prefit').fit(X_cal, y_cal)
     return calibrated_classifier
+
 
 
 # class for part 3
@@ -40,7 +48,7 @@ class PricingModel():
         # If you wish to use the classifier in part 2, you will need
         # to implement a predict_proba for it before use
         # =============================================================
-        self.base_classifier = None # ADD YOUR BASE CLASSIFIER HERE
+        self.base_classifier = ClaimClassifier() # ADD YOUR BASE CLASSIFIER HERE
 
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
@@ -63,7 +71,68 @@ class PricingModel():
         # =============================================================
         # YOUR CODE HERE
 
-        return  # YOUR CLEAN DATA AS A NUMPY ARRAY
+        # loading dataset
+        dat = pd.read_csv("part2_training_data.csv")
+        # drop the useless
+        dat.drop(columns=["id_policy, claim_amount"])
+
+        # get the label of the traing set
+        y = dat.drop(columns=["made_claim"]).to_numpy()
+
+        ###############################################################
+        # features with string values (including binary YES/NO)
+        ###############################################################
+        
+        # get the name of features with string values
+        str_features_name = ["pol_coverage","pol_pay_freq","pol_payd", \
+            "pol_usage","drv_drv2","drv_sex1","drv_sex2","vh_fuel", \
+                "vh_make","vh_model","vh_type"]
+        
+        # get the raw data of features with string values
+        str_features = dat.drop(columns=str_features_name)
+
+        # label binarizer     
+        lb = preprocessing.LabelBinarizer() 
+        
+        # produce one-hot row vectors for each data point
+        # each element of this list is a set of one-hot row numpy vectors
+        vector_set = []
+
+        for i in range(len(str_features_name)):
+            # 1. find the uniuqe values (the support)
+            # select the corresponding column
+            temp1 = str_features.loc[:,str_features_name[i]]
+            # find the uniques values (suppory)
+            support = temp1.unique().to_numpy()
+
+            # 2. # one-hot vectors for the i-th feature 
+            vectors = lb.transform(temp1.to_numpy())
+            # save them
+            vector_set.append(vectors)
+        
+
+        ###############################################################
+        # features with numeric values
+        ###############################################################
+        # numeric feature vectors into ndarrays
+        x = dat.to_numpy()
+        normaliser = preprocessing.MinMaxScaler()
+        # normalised into between 0 and 1
+        x_scaled = normaliser.fit_transform(x)
+
+
+        ###############################################################
+        # merge the two parts
+        ###############################################################
+        X = x_scaled
+        for part in vector_set:
+            X.append(part, axis=1)
+
+        X.append(y, axis=1) # merge the label
+
+        return X
+
+
 
     def fit(self, X_raw, y_raw, claims_raw):
         """Classifier training function.
@@ -158,3 +227,4 @@ def load_model():
     with open('part3_pricing_model.pickle', 'rb') as target:
         trained_model = pickle.load(target)
     return trained_model
+

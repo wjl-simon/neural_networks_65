@@ -171,7 +171,7 @@ class ClaimClassifier():
 
         # Plot ROC
         fpr, tpr, thresholds = roc_curve(y_raw, predict)
-        self.plot_roc_curve(fpr, tpr)
+        #self.plot_roc_curve(fpr, tpr)
 
         # Return accuracy and auroc
         return accuracy_score(predict, y_raw), roc_auc_score(y_raw, predict)
