@@ -128,7 +128,7 @@ class ClaimClassifier():
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item()
-            # print("Iteration: %d, Loss: %.5f." %(i + 1, running_loss / len(train_loader.dataset)))
+            print("Iteration: %d, Loss: %.5f." %(i + 1, running_loss / len(train_loader.dataset)))
 
     def predict(self, X_raw):
         """Classifier probability prediction function.
@@ -168,65 +168,16 @@ class ClaimClassifier():
 
         predict = self.predict(X_raw)
         predict = predict.squeeze(1).detach().numpy()
-        return accuracy_score(predict, y_raw)
-        # Preprocess data
-        # X_clean = self._preprocessor(X_raw)
-        # # Create dataset
-        # x_test = torch.tensor(X_clean, dtype=torch.float)
-        # y_test = torch.tensor(y_raw, dtype=torch.float)
-        # test_set = TensorDataset(x_test, y_test)
-        # # Define data loader
-        # test_loader = DataLoader(test_set, batch_size=self.batch_size, shuffle=False)
-        # correct = 0
-        # with torch.no_grad():
-        #     for inputs, targets in test_loader:
-        #         outputs = self.model(inputs)
-        #         predict = torch.squeeze(outputs.round())
-        #         correct += predict.eq(targets).sum().item()
-        # # Return test accuracy
-        # return correct / len(test_loader.dataset)
+
+        # Plot ROC
+        fpr, tpr, thresholds = roc_curve(y_raw, predict)
+        self.plot_roc_curve(fpr, tpr)
+
+        # Return accuracy and auroc
+        return accuracy_score(predict, y_raw), roc_auc_score(y_raw, predict)
 
 
-        # pred = predict.cpu().numpy()
-        # y = targets.cpu().numpy()
-
-
-
-
-
-        #
-        #
-        #
-        #
-        #
-
-        #
-        # # k = 10
-        # k_scores = []
-        # # kf = KFold(n_splits=k)
-        # # kf.get_n_splits(X_raw)
-        # # for train_index, test_index in kf.split(X_raw):
-        # #     X_train, X_test = X_raw[train_index], X_raw[test_index]
-        # #     y_train, y_test = y_raw[train_index], y_raw[test_index]
-        # #
-        # #     model = self.fit(X_train, y_train)
-        # #
-        # #   proba = model.predict_proba(self._preprocessor(X_test))
-        # auc = roc_auc_score(y, pred)
-        # fpr, tpr, thresholds = roc_curve(y, pred)
-        # self.plot_roc_curve(fpr, tpr)
-        # k_scores.append(auc)
-        # print("Average AUC: " + str(np.mean(k_scores)))
-        #
-        #
-
-
-
-
-
-
-
-
+    
     def save_model(self):
         # Please alter this file appropriately to work in tandem with your load_model function below
         with open('part2_claim_classifier.pickle', 'wb') as target:
@@ -250,89 +201,6 @@ def load_model():
     return trained_model
 
 
-
-# ENSURE TO ADD IN WHATEVER INPUTS YOU DEEM NECESSARRY TO THIS FUNCTION
-
-# def ClaimClassifierHyperParameterSearch(X_raw, y_raw):  # ENSURE TO ADD IN WHATEVER INPUTS YOU DEEM NECESSARRY TO THIS FUNCTION
-#     """Performs a hyper-parameter for fine-tuning the classifier.
-#
-#     Implement a function that performs a hyper-parameter search for your
-#     architecture as implemented in the ClaimClassifier class.
-#
-#     The function should return your optimised hyper-parameters.
-#     """
-#
-#     param_grid = {
-#         'l1': (16, 32, 64, 128),
-#         'l2': (16, 32, 64, 128),
-#         'ac1': ['relu', 'tanh'],
-#         'ac2': ['relu', 'tanh'],
-#         'epoch_size': [8, 12, 16, 20],
-#         'batch_size': [16, 32, 64, 128]
-#     }
-#
-#     best_auc = 0
-#     best_hyperparameter = []
-#     num_interation = 50
-#     for i in range(num_interation):
-#
-#         hyperparameter_lst = []
-#         l1 = random.sample(param_grid['l1'], 1)[0]
-#         l2 = random.sample(param_grid['l2'], 1)[0]
-#         ac1 = random.sample(param_grid['ac1'], 1)[0]
-#         ac2 = random.sample(param_grid['ac2'], 1)[0]
-#         epoch_size = random.sample(param_grid['epoch_size'], 1)[0]
-#         batch_size = random.sample(param_grid['batch_size'], 1)[0]
-#
-#         hyperparameter_lst.append(l1)
-#         hyperparameter_lst.append(l2)
-#         hyperparameter_lst.append(ac1)
-#         hyperparameter_lst.append(ac2)
-#         hyperparameter_lst.append(epoch_size)
-#         hyperparameter_lst.append(batch_size)
-#
-#         k = 3
-#         k_scores = []
-#         kf = KFold(n_splits=k)
-#         kf.get_n_splits(X_raw)
-#
-#         for train_index, test_index in kf.split(X_raw):
-#             X_train, X_test = X_raw[train_index], X_raw[test_index]
-#             y_train, y_test = y_raw[train_index], y_raw[test_index]
-#
-#             scaler = MinMaxScaler()
-#             scaler.fit(X_train)
-#             X_train = scaler.transform(X_train)
-#             X_test = scaler.transform(X_test)
-#
-#             model = Sequential()
-#             model.add(Dense(l1, input_shape=(9,)))
-#             model.add(Activation(ac1))
-#             model.add(Dense(l2))
-#             model.add(Activation(ac2))
-#             model.add(Dense(1))
-#             model.add(Activation('sigmoid'))
-#             model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-#             model.fit(X_train, y_train, epochs=epoch_size, batch_size=batch_size, verbose=1)
-#
-#             proba = model.predict_proba(X_test)
-#             auc = roc_auc_score(y_test, proba)
-#             print(auc)
-#             k_scores.append(auc)
-#
-#         avg_auc = np.mean(k_scores)
-#         if avg_auc > best_auc:
-#             best_auc = avg_auc
-#             best_hyperparameter = hyperparameter_lst
-#
-#         print("auc")
-#         print(best_auc)
-#         return best_hyperparameter
-#
-#
-#     # c.evaluate_architecture()
-#
-#     # Return the chosen hyper parameters
 
 def ClaimClassifierHyperParameterSearch(X_raw, y_raw):  # ENSURE TO ADD IN WHATEVER INPUTS YOU DEEM NECESSARRY TO THIS FUNCTION
     """Performs a hyper-parameter for fine-tuning the classifier.
@@ -405,12 +273,12 @@ def main():
     # From KFold, Best parameters lr=0.001, bs=64 epochs=100
     # Create classifier
     claimClassifier = ClaimClassifier()
-    claimClassifier.set_hyperparameters(lr=0.001, batch_size=4, epoch=100)
+    claimClassifier.set_hyperparameters(lr=0.001, batch_size=64, epoch=100)
     # Train classifier
     claimClassifier.fit(X_train, y_train)
     # Evaluate classifier
-    accuracy = claimClassifier.evaluate_architecture(X_test, y_test)
-    print(f"Model accuracy: {accuracy}")
+    accuracy, auroc = claimClassifier.evaluate_architecture(X_test, y_test)
+    print(f"Model accuracy: {accuracy}. Model auroc: {auroc}")
     # Save model
     claimClassifier.save_model()
     # Load model
