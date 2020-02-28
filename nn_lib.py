@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-
+import math
 
 def xavier_init(size, gain=1.0):
     """
@@ -9,7 +9,6 @@ def xavier_init(size, gain=1.0):
     low = -gain * np.sqrt(6.0 / np.sum(size))
     high = gain * np.sqrt(6.0 / np.sum(size))
     return np.random.uniform(low=low, high=high, size=size)
-
 
 class Layer:
     """
@@ -94,21 +93,34 @@ class SigmoidLayer(Layer):
     def __init__(self):
         self._cache_current = None
 
+
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        temp = 1 / (1 + np.exp(-x))
+        # the gradient of sigmoid(x)
+        self._cache_current = np.multiply(temp, 1-temp)
+
+        return temp
 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
 
-    def backward(self, grad_z):
+    def backward(self, grad_z): 
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        # actually, @param grad_z should be grad_loss_wrt_x
+        assert grad_z.shape == self._cache_current.shape,\
+             print('Wrong dimension in the sigmoid layer: grad_z is {}, \
+                 grad_sigmoid is {}.'.format(grad_z.shape,self._cache_current.shape))
+
+        # chain rule
+        return np.multiply(self._cache_current,grad_z)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -123,21 +135,35 @@ class ReluLayer(Layer):
     def __init__(self):
         self._cache_current = None
 
+
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        x = np.maximum(0,x)
+
+        # the gradient of RuLu(temp)
+        u = np.zeros_like(x)
+        u[x > 0] = 1
+        self._cache_current = u
+
+        return x
 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
 
-    def backward(self, grad_z):
+    def backward(self, grad_z): # actually, @param grad_z should be grad_loss_wrt_x
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        assert grad_z.shape == self._cache_current.shape,\
+             print('Wrong dimension in the relu layer: grad_z is {}, \
+                 grad_relu is {}.'.format(grad_z.shape,self._cache_current.shape))
+
+        # chain rule
+        return np.multiply(self._cache_current,grad_z)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -162,11 +188,13 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._W = None
-        self._b = None
+        self._W = xavier_init((n_in,n_out)) # n_in by n_out matrix
+        self._b = xavier_init((1,self.n_out))  # bias term, shape of 1 by n_out
 
+        # the gradients of z with respect to x, _W and _b
         self._cache_current = None
-        self._grad_W_current = None
+        # the gradients of loss with respect to _W and _b
+        self._grad_W_current = None 
         self._grad_b_current = None
 
         #######################################################################
@@ -175,7 +203,7 @@ class LinearLayer(Layer):
 
     def forward(self, x):
         """
-        Performs forward pass through the layer (i.e. returns Wx + b).
+        Performs forward pass through the layer (i.e. returns xW + b).
 
         Logs information needed to compute gradient at a later stage in
         `_cache_current`.
@@ -189,7 +217,22 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        assert x.shape[1] == self.n_in,\
+             print('Wrong dimension for the linear layer. now the dim for the \
+                 input is {}, n_in is {}'.format(x.shape[1],self.n_in))
+        
+
+        #batch_size = x.shape[0] # num of examples (size of the batch)
+
+        # the affine transform z = x*_W + _b
+        z = np.dot(x,self._W) + self._b # numpy array broadcasting
+
+        # the gradients of z with respect to x, _W and _b
+        # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n_out,n.out)
+        self._cache_current = self._W, x, np.ones((self.n_out,self.n_out))
+
+        return z
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -212,7 +255,30 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        # the gradients of z with respect to x, _W and _b
+        # i.e. grad_z_wrt_x = _W, grad_z_wrt_W = x, grad_z_wrt_b = ones(n.in)
+        grad_z_wrt_x, grad_z_wrt_W, grad_z_wrt_b = self._cache_current
+
+        assert grad_z.shape[1] == grad_z_wrt_x.shape[1],\
+             print('Wrong dimension in the lieaner layer: grad_z is {}, \
+                 grad_z_wrt_x is {}.'.format(grad_z.shape,grad_z_wrt_x.shape))
+        
+        assert grad_z.shape[0] == grad_z_wrt_W.shape[0],\
+             print('Wrong dimension in the lieaner layer: grad_z is {}, \
+                 grad_z_wrt_W is {}.'.format(grad_z.shape,grad_z_wrt_W.shape))
+        
+        assert grad_z.shape[1] == grad_z_wrt_b.shape[0],\
+             print('Wrong dimension in the lieaner layer: grad_z is {}, \
+                 grad_z_wrt_b is {}.'.format(grad_z.shape,grad_z_wrt_b.shape))
+
+        # chain rule
+        self._grad_W_current = np.dot(np.transpose(grad_z_wrt_W),grad_z)
+        # sum over different data points, remember that _b is a 1-d vector
+        #self._grad_b_current = np.sum(np.dot(grad_z,grad_z_wrt_b),axis=0)
+        self._grad_b_current = np.average(np.dot(grad_z,grad_z_wrt_b),axis=0)
+        
+        return np.dot(grad_z,np.transpose(grad_z_wrt_x))
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -229,7 +295,9 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        self._W -= self._grad_W_current * learning_rate
+        self._b -= self._grad_b_current * learning_rate
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -259,7 +327,31 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._layers = None
+
+        # N.B. Conventinally a linear layer + a non-linear layer together forms
+        # one single "layer", although the aforementioned code to some extent
+        # treats them as seperate layers
+
+        self._layers = []
+
+        LEN = len(neurons)
+        for i in range(LEN):
+            # linear layer first
+            if i == 0:
+                # the input layer
+                self._layers.append(LinearLayer(input_dim,neurons[0]))
+            else:
+                # hidden layer
+                self._layers.append(LinearLayer(neurons[i-1],neurons[i]))
+            # then the activation layer
+            if activations[i] == "relu":
+                self._layers.append(ReluLayer())
+            elif activations[i] == "sigmoid":
+                self._layers.append(SigmoidLayer())
+            elif activations[i] == "identity":
+                self._layers.append("identity") # dummpy layer
+
+
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -278,7 +370,13 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        for layer in self._layers:
+            # the output of layer L becomes input of layer L+1
+            if isinstance(layer,Layer):
+                x = layer.forward(x)
+            # elif isinstance(layer,str):
+            #     continue
+        return x
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -302,7 +400,15 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        # backprop starts from the output layer
+        for layer in reversed(self._layers):
+            # the gradient of loss wrt z or x in layer L becomes the 
+            # input to layer L-1
+            if isinstance(layer,Layer):
+                grad_z = layer.backward(grad_z)
+
+        return grad_z
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -319,7 +425,9 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        for layer in reversed(self._layers):
+            if isinstance(layer,Layer): # an identity layer has no update_params()
+                layer.update_params(learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -379,7 +487,10 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._loss_layer = None
+        if loss_fun == "mse":
+            self._loss_layer = MSELossLayer()
+        elif loss_fun == "cross_entropy":
+            self._loss_layer = CrossEntropyLossLayer()
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -400,7 +511,11 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        # guide to shuffling via array indexing courtesy of below
+        # https://stackoverflow.com/questions/4601373/better-way-to-shuffle-two-numpy-arrays-in-unison
+        assert len(input_dataset) == len(target_dataset)
+        pos = np.random.permutation(len(input_dataset))
+        return input_dataset[pos], target_dataset[pos]
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -429,7 +544,25 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        number_input_col = input_dataset.shape[0]
+        numberOfBatches = math.ceil(number_input_col/self.batch_size)
+
+        for epoch in range(self.nb_epoch):
+            if self.shuffle_flag == True:
+                input_dataset , target_dataset = self.shuffle(input_dataset, target_dataset)
+
+            # Split dataset into selected size
+            # Array split guide found here: https://numpy.org/doc/1.18/reference/generated/numpy.array_split.html
+            input_dataset_batches = np.array_split(input_dataset, numberOfBatches, axis = 0)
+            target_dataset_batches = np.array_split(target_dataset, numberOfBatches, axis = 0)
+
+            for input_batch, output_batch in zip(input_dataset_batches, target_dataset_batches):
+                fwdPredictedOutput = self.network.forward(input_batch)
+                number = self._loss_layer.forward(fwdPredictedOutput, output_batch)
+                gradLossWrtY = self._loss_layer.backward()
+                # # Something about this, not sure right or not.
+                self.network.backward(gradLossWrtY)
+                self.network.update_params(self.learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -448,7 +581,9 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        fwdPredictedOutput = self.network.forward(input_dataset)
+        return self._loss_layer.forward(fwdPredictedOutput, target_dataset)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -473,7 +608,8 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self.maxValue = np.max(data, axis = 0)
+        self.minValue = np.min(data, axis = 0)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -492,7 +628,7 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        return (data - self.minValue) / (self.maxValue - self.minValue)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -511,7 +647,7 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        return (data * (self.maxValue - self.minValue)) + self.minValue
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -522,9 +658,11 @@ def example_main():
     input_dim = 4
     neurons = [16, 3]
     activations = ["relu", "identity"]
+
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
+
     np.random.shuffle(dat)
 
     x = dat[:, :4]
@@ -541,6 +679,7 @@ def example_main():
 
     x_train_pre = prep_input.apply(x_train)
     x_val_pre = prep_input.apply(x_val)
+
 
     trainer = Trainer(
         network=net,
