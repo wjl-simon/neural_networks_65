@@ -316,8 +316,8 @@ class PricingModel():
         # return probabilities for the positive class (label 1)
         score = self.base_classifier.predict_proba(X_clean)
 
-        temp = np.exp(score)
-        return temp / np.sum(temp) # softmax
+        #temp = np.exp(score)
+        return score # softmax
 
     def predict_premium(self, X_raw):
         """Predicts premiums based on the pricing model.
@@ -387,7 +387,7 @@ if __name__ == '__main__':
     X_test, y_test = test.iloc[:,:-1].values, test.iloc[:,-1].values
 
     # instantiate a model
-    pricePredictor = PricingModel(epoch_num = 150)
+    pricePredictor = PricingModel(epoch_num = 10)
 
     # severaity (claim_raw)
     #claims_raw = np.ones(y_train.shape[0])

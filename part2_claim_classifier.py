@@ -153,7 +153,7 @@ class ClaimClassifier():
         # YOUR CODE HERE
         X_clean = self._preprocessor(X_raw)
         X_clean = torch.tensor(X_clean, dtype=torch.float)
-        results = torch.round(self.model(X_clean))
+        results = torch.round(self.model(X_clean)).detach().numpy()
         return results # YOUR PREDICTED CLASS LABELS
 
     def evaluate_architecture(self, X_raw, y_raw):
@@ -165,9 +165,9 @@ class ClaimClassifier():
         You can use external libraries such as scikit-learn for this
         if necessary.
         """
+        X_raw_tensor = torch.tensor(X_raw)
+        predict = self.predict(X_raw_tensor)
 
-        predict = self.predict(X_raw)
-        predict = predict.squeeze(1).detach().numpy()
 
         # Plot ROC
         fpr, tpr, thresholds = roc_curve(y_raw, predict)
@@ -273,7 +273,7 @@ def main():
     # From KFold, Best parameters lr=0.001, bs=64 epochs=100
     # Create classifier
     claimClassifier = ClaimClassifier()
-    claimClassifier.set_hyperparameters(lr=0.001, batch_size=64, epoch=100)
+    claimClassifier.set_hyperparameters(lr=0.001, batch_size=64, epoch=1)
     # Train classifier
     claimClassifier.fit(X_train, y_train)
     # Evaluate classifier
@@ -289,3 +289,27 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # Read raw data from csv file
+    # df = pd.read_csv("part2_training_data.csv")
+    # # Drop column claim_amount for obvious reason
+    # df = df.drop("claim_amount", 1)
+    # # Take all rows with claim_made == 1
+    # ones = df.loc[df["made_claim"] == 1]
+    # # Duplicate data by 10 times
+    # ones = pd.concat([ones] * 9, ignore_index=True)
+    # # Concat ones to original data
+    # df = pd.concat([df, ones], ignore_index=True)
+    # # # Shuffle data
+    # df = shuffle(df)
+    # # Split data into training (80%) and test set (20%)
+    # train, test = train_test_split(df, test_size=0.2)
+    # # Split data into inputs and labels
+    # X_train, y_train = train.iloc[:,:-1].values, train.iloc[:,-1].values
+    # X_test, y_test = test.iloc[:,:-1].values, test.iloc[:,-1].values
+
+    # claimClassifier = load_model()
+    # predict_res = claimClassifier.predict(X_test)
+    # print(predict_res.dtype)
+    # print(predict_res.shape)
+    # print(predict_res)
+
