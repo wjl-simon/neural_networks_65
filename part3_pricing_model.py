@@ -316,7 +316,7 @@ class PricingModel():
         # return probabilities for the positive class (label 1)
         score = self.base_classifier.predict_proba(X_clean)
 
-        return score.reshape((len(score),1))
+        return score
 
 
     def predict_premium(self, X_raw):
@@ -347,7 +347,7 @@ class PricingModel():
         print('noise shape {}'.format(noise.shape))
         
         #return self.predict_claim_probability(X_raw) * self.y_mean
-        price =  self.predict_claim_probability(X_raw) * self.y_mean + noise.reshape((len(noise),1))
+        price =  self.predict_claim_probability(X_raw) * self.y_mean + noise
 
         print('price shape {}'.format(price.shape))
 
@@ -395,9 +395,6 @@ if __name__ == '__main__':
     # instantiate a model
     pricePredictor = PricingModel(epoch_num = 2)
 
-    # severaity (claim_raw)
-    #claims_raw = np.ones(y_train.shape[0])
-
     # training
     pricePredictor.fit(X_train, y_train, claims_raw)
 
@@ -407,8 +404,8 @@ if __name__ == '__main__':
     # convert the probibility into Yes/No to compute test set accuracy
     predicted_result = np.round(freq_predict)
     # test set (frequency model) accuracy
-    print('The test set accuracy on the frequency model is {}'. \
-        format(accuracy_score(predicted_result, y_test)))
+    #print('The test set accuracy on the frequency model is {}'. \
+    #    format(accuracy_score(predicted_result, y_test)))
     
     # roc-auc on the frequency model
     print('The ROC-AUC is {}'.format(roc_auc_score(y_test, predicted_result)))
@@ -421,17 +418,3 @@ if __name__ == '__main__':
     # save the model
     print('Saving the model')
     pricePredictor.save_model()
-
-    c1 = load_model()
-    print(c1.predict_premium(X_test))
-    print(c1.predict_claim_probability(X_test))
-    # get the predicted claim probability
-    freq_predict1 = c1.predict_claim_probability(X_test)
-
-
-    print('on the saved model, freq_predict1 has shape {}, y_test has {}'.format(freq_predict1.shape,y_test.shape))
-    
-    # convert the probibility into Yes/No to compute test set accuracy
-    predicted_result1 = np.round(freq_predict1)
-    print('The test set accuracy on the frequency model is {}'. \
-         format(accuracy_score(predicted_result1, y_test)))
