@@ -343,8 +343,13 @@ class PricingModel():
         # Guassian noise N~(0,y_std)
         noise = np.random.normal(self.y_mean*1.2,self.y_std/5,X_raw.shape[0])
 
+        
+        print('noise shape {}'.format(noise.shape))
+        
         #return self.predict_claim_probability(X_raw) * self.y_mean
-        price =  self.predict_claim_probability(X_raw) * self.y_mean + noise
+        price =  self.predict_claim_probability(X_raw) * self.y_mean + noise.reshape((len(noise),1))
+
+        print('price shape {}'.format(price.shape))
 
         return price
 
