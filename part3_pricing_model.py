@@ -122,8 +122,6 @@ class FreqClassifier(Net):
         for i in range(len(out)):
             out[i] = self.model(X_test[i])
 
-        print('Output from FreqClassifier.predict_proba() is {}'.format(out))
-
         return out
 
 
@@ -270,9 +268,6 @@ class PricingModel():
         # for feature in vector_set:
         #     X = np.append(X,feature,axis=1)
 
-
-        print('processed data size is {}'.format(X.shape))
-
         return X
 
 
@@ -371,10 +366,8 @@ class PricingModel():
         # REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
         # For example you could scale all your prices down by a factor
 
-        print('In predict_premium: the input has shape {}'.format(X_raw.shape))
-
         # Guassian noise N~(0,y_std)
-        noise = np.random.normal(self.y_mean*2,self.y_std/3,X_raw.shape[0])
+        noise = np.random.normal(self.y_mean*1.7,self.y_std/4,X_raw.shape[0])
         
         #return self.predict_claim_probability(X_raw) * self.y_means
         price =  self.predict_claim_probability(X_raw) * self.y_mean + noise
@@ -425,7 +418,7 @@ if __name__ == '__main__':
     X_test_raw, y_test_raw = test.iloc[:,:-1], test.iloc[:,-1]
 
     # instantiate a model
-    pricePredictor = PricingModel(epoch_num = 2)
+    pricePredictor = PricingModel(epoch_num = 30)
 
     # training
     pricePredictor.fit(X_train, y_train, claims_raw)
