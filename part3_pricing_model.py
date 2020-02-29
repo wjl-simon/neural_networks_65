@@ -122,6 +122,8 @@ class FreqClassifier(Net):
         for i in range(len(out)):
             out[i] = self.model(X_test[i])
 
+        print('Output from FreqClassifier.predict_proba() is {}'.format(out))
+
         return out
 
 
