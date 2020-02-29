@@ -3,14 +3,17 @@ from sklearn.model_selection import train_test_split
 import pickle
 import numpy as np
 
-from part2_claim_classifier.py import ClaimClassifier
-
 from sklearn import preprocessing
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.data import TensorDataset, DataLoader
+
+from sklearn.utils import shuffle
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score
 
 
 def fit_and_calibrate_classifier(classifier, X, y):
@@ -25,16 +28,53 @@ def fit_and_calibrate_classifier(classifier, X, y):
     return calibrated_classifier
 
 
+
+class Net(nn.Module):
+    '''
+    Nueral network: copying from part2 but we've slightly changed it
+    '''
+    
+    def __init__(self):
+        # since we will use a label binariser, the num of features is unknown due 
+        # to the one-hot representation (unless u mannually count them), we configurate
+        # the network architecture in another function
+        super().__init__()
+        self.linear1 = None
+        self.linear2 = None
+        self.linear3 = None
+        self.linear4 = None
+        
+    def forward(self, X_raw):
+        # PLEASE call setNetwork before doing forward()
+        out = self.linear1(X_raw)
+        out = F.leaky_relu(out)
+        out = self.linear2(out)
+        out = F.leaky_relu(out)
+        out = self.linear3(out)
+        out = F.leaky_relu(out)
+        out = torch.softmax(self.linear4(out)) # softmax gives prob
+        return out
+
+    # set (modify) the network architecture
+    def setNetwork(self,input_size,l1=1024, l2=256, l3=64):
+        self.linear1 = nn.Linear(in_features=input_size, out_features=l1, bias=True)
+        self.linear2 = nn.Linear(in_features=l1, out_features=l2, bias=True)
+        self.linear3 = nn.Linear(in_features=l2, out_features=l3, bias=True)
+        self.linear4 = nn.Linear(in_features=l3, out_features=1, bias=True)
+
+
 # class for part 3
 class PricingModelLinear():
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY
-    def __init__(self, calibrate_probabilities=False):
+    def __init__(self, calibrate_probabilities=False, batch_size = 200):
         """
         Feel free to alter this as you wish, adding instance variables as
         necessary.
         """
         self.y_mean = None
         self.calibrate = calibrate_probabilities
+
+        self.batch_size = batch_size
         # =============================================================
         # READ ONLY IF WANTING TO CALIBRATE
         # Place your base classifier here
@@ -49,7 +89,7 @@ class PricingModelLinear():
         # If you wish to use the classifier in part 2, you will need
         # to implement a predict_proba for it before use
         # =============================================================
-        self.base_classifier = None # ADD YOUR BASE CLASSIFIER HERE
+        self.base_classifier = Net() # ADD YOUR BASE CLASSIFIER HERE
 
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
@@ -73,6 +113,8 @@ class PricingModelLinear():
             A clean data set that is used for training and prediction.
         """
         # =============================================================
+
+        assert X_raw.shape[1] == len(heading), "Wrong input dimension!"
 
         # convert the x_raw as pandas dataframe
         dat = pd.DataFrame(X_raw)
@@ -135,6 +177,11 @@ class PricingModelLinear():
         ##############################################################
         for feature in vector_set:
             X.append(feature,axis=1)
+        
+        ##############################################################
+        # Reconfigurate the input size of the base_classifier
+        ##############################################################
+        self.base_classifier.setNetwork(X.shape[1])
 
         return X
 
@@ -166,8 +213,28 @@ class PricingModelLinear():
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
         X_clean = self._preprocessor(X_raw)
 
+        # define the optimiser
+        optimizer = optim.Adam(self.model.parameters())
 
+        # parsing numpy arrays into tensors
+        x_train = torch.tensor(X_clean, dtype=torch.float)
+        y_train = torch.tensor(y_raw, dtype=torch.float) # y_raw is clean
+        train_set = TensorDataset(x_train, y_train)
+        # define data loader
+        train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True)
 
+        # epoch number
+        epoch_num = y_train.shape[0] // self.batch_size
+        # training
+        for epoch in range(self.epoch_num):
+            for inputs, label in train_loader:
+                optimizer.zero_grad()
+                # output from the network
+                pred = self.base_classifier(inputs)
+                loss = F.binary_cross_entropy(pred, torch.unsqueeze(label, dim=1))
+                # backprop
+                loss.backward()
+                optimizer.step()
 
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
         if self.calibrate:
@@ -176,6 +243,8 @@ class PricingModelLinear():
         else:
             self.base_classifier = self.base_classifier.fit(X_clean, y_raw)
         return self.base_classifier
+
+
 
     def predict_claim_probability(self, X_raw):
         """Classifier probability prediction function.
@@ -197,7 +266,8 @@ class PricingModelLinear():
         # =============================================================
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
         # X_clean = self._preprocessor(X_raw)
-
+        X_clean = torch.tensor(X_clean, dtype=torch.float)
+        probability = self.base_classifier(X_clean)
 
         return  # return probabilities for the positive class (label 1)
 
@@ -236,3 +306,25 @@ def load_model():
     with open('part3_pricing_model.pickle', 'rb') as target:
         trained_model = pickle.load(target)
     return trained_model
+
+
+
+
+if __name__ == '__main__':
+    # Read raw data from csv file
+    df = pd.read_csv("part3_training_data.csv")
+    # Drop column claim_amount for obvious reason
+    df = df.drop("claim_amount", 1)
+    # Take all rows with claim_made == 1
+    ones = df.loc[df["made_claim"] == 1]
+    # Duplicate data by 10 times
+    ones = pd.concat([ones] * 9, ignore_index=True)
+    # Concat ones to original data
+    df = pd.concat([df, ones], ignore_index=True)
+    # # Shuffle data
+    df = shuffle(df)
+    # Split data into training (80%) and test set (20%)
+    train, test = train_test_split(df, test_size=0.2)
+    # Split data into inputs and labels
+    X_train, y_train = train.iloc[:,:-1].values, train.iloc[:,-1].values
+    X_test, y_test = test.iloc[:,:-1].values, test.iloc[:,-1].values
