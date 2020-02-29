@@ -44,7 +44,6 @@ class Net(nn.Module):
         self.linear4 = nn.Linear(in_features=l3, out_features=1, bias=True)
         
     def forward(self, x_train):
-        # PLEASE call setNetwork before doing forward()
         out = self.linear1(x_train)
         out = F.leaky_relu(out)
         out = self.linear2(out)
@@ -52,15 +51,7 @@ class Net(nn.Module):
         out = self.linear3(out)
         out = F.leaky_relu(out)
         out = torch.sigmoid(self.linear4(out))
-        return out
-
-    # def setNetwork(self,input_size,l1=512, l2=128, l3=32):
-    #     # set (modify) the network architecture
-    #     self.linear1 = nn.Linear(in_features=input_size, out_features=l1, bias=True)
-    #     self.linear2 = nn.Linear(in_features=l1, out_features=l2, bias=True)
-    #     self.linear3 = nn.Linear(in_features=l2, out_features=l3, bias=True)
-    #     self.linear4 = nn.Linear(in_features=l3, out_features=1, bias=True)
-    
+        return out    
 
 
 class FreqClassifier(Net):
@@ -114,10 +105,7 @@ class FreqClassifier(Net):
         out: ndarray
             A 1d np array of the predicted probability of claiming.
         """
-
-        print('In FreqClassifier.predict_proba() the input of type {} has shape {}'.format(X_clean.dtype, X_clean.shape))
         X_test = torch.tensor(X_clean, dtype=torch.float)
-        print('In FreqClassifier.predict_proba() converted to tensor has shape {}'.format(X_test.shape))
         out = np.zeros(X_test.shape[0])
         for i in range(len(out)):
             out[i] = self.model(X_test[i])
@@ -232,6 +220,7 @@ class PricingModel():
         #     # vector, where N is the num of data points
         #     vectors = lb.fit_transform(data.values)
         #     vector_set.append(vectors)
+
         
         # with credit https://pbpython.com/categorical-encoding.html
         # a dict for translating the strings into numeric values
@@ -246,7 +235,7 @@ class PricingModel():
         dat.replace(str2num_dict, inplace=True)
 
         ##############################################################
-        # Handeling (normalise) features with non-numeric values
+        # Normalise numeric values
         ##############################################################
 
         #handel the missing cells and those outliers with non-numeric values
@@ -261,13 +250,6 @@ class PricingModel():
         # clean data
         X = normaliser.fit_transform(data)
         
-
-        ##############################################################
-        # Merge the processed features into a clean training set
-        ##############################################################
-        # for feature in vector_set:
-        #     X = np.append(X,feature,axis=1)
-
         return X
 
 
@@ -418,7 +400,7 @@ if __name__ == '__main__':
     X_test_raw, y_test_raw = test.iloc[:,:-1], test.iloc[:,-1]
 
     # instantiate a model
-    pricePredictor = PricingModel(epoch_num = 30)
+    pricePredictor = PricingModel(epoch_num = 200)
 
     # training
     pricePredictor.fit(X_train, y_train, claims_raw)
