@@ -33,15 +33,15 @@ class Net(nn.Module):
     Nueral network: copying from part2 but we've slightly changed it
     '''
     
-    def __init__(self):
+    def __init__(self,input_size=22,l1=512, l2=128, l3=32):
         # since we will use a label binariser, the num of features is unknown due 
         # to the one-hot representation (unless u mannually count them), we configurate
         # the network architecture in another function
         super().__init__()
-        self.linear1 = None
-        self.linear2 = None
-        self.linear3 = None
-        self.linear4 = None
+        self.linear1 = nn.Linear(in_features=input_size, out_features=l1, bias=True)
+        self.linear2 = nn.Linear(in_features=l1, out_features=l2, bias=True)
+        self.linear3 = nn.Linear(in_features=l2, out_features=l3, bias=True)
+        self.linear4 = nn.Linear(in_features=l3, out_features=1, bias=True)
         
     def forward(self, x_train):
         # PLEASE call setNetwork before doing forward()
@@ -54,12 +54,12 @@ class Net(nn.Module):
         out = torch.sigmoid(self.linear4(out))
         return out
 
-    def setNetwork(self,input_size,l1=512, l2=128, l3=32):
-        # set (modify) the network architecture
-        self.linear1 = nn.Linear(in_features=input_size, out_features=l1, bias=True)
-        self.linear2 = nn.Linear(in_features=l1, out_features=l2, bias=True)
-        self.linear3 = nn.Linear(in_features=l2, out_features=l3, bias=True)
-        self.linear4 = nn.Linear(in_features=l3, out_features=1, bias=True)
+    # def setNetwork(self,input_size,l1=512, l2=128, l3=32):
+    #     # set (modify) the network architecture
+    #     self.linear1 = nn.Linear(in_features=input_size, out_features=l1, bias=True)
+    #     self.linear2 = nn.Linear(in_features=l1, out_features=l2, bias=True)
+    #     self.linear3 = nn.Linear(in_features=l2, out_features=l3, bias=True)
+    #     self.linear4 = nn.Linear(in_features=l3, out_features=1, bias=True)
     
 
 
@@ -213,27 +213,39 @@ class PricingModel():
         # Handeling features with non-numeric values
         ##############################################################
         
-        non_num_feature_names = ['pol_coverage','pol_pay_freq', 'pol_usage', \
-            'vh_fuel']
-        # non-numeric features
-        non_num_feature = dat[non_num_feature_names]
-        dat.drop(columns=non_num_feature_names, axis=1,inplace=True)
+        # non_num_feature_names = ['pol_coverage','pol_pay_freq', 'pol_usage', \
+        #     'vh_fuel']
+        # # non-numeric features
+        # non_num_feature = dat[non_num_feature_names]
+        # dat.drop(columns=non_num_feature_names, axis=1,inplace=True)
         
-        # print(dat.dtypes)
-        # print(non_num_feature.dtypes)
+        # # print(dat.dtypes)
+        # # print(non_num_feature.dtypes)
 
-        # label binarizer
-        lb = preprocessing.LabelBinarizer()
-        # each element is a one-hot-vectorised feature
-        vector_set = [] 
-        for i in range(len(non_num_feature_names)):
-            # select a feature (a column)
-            data = non_num_feature[non_num_feature_names[i]]
+        # # label binarizer
+        # lb = preprocessing.LabelBinarizer()
+        # # each element is a one-hot-vectorised feature
+        # vector_set = [] 
+        # for i in range(len(non_num_feature_names)):
+        #     # select a feature (a column)
+        #     data = non_num_feature[non_num_feature_names[i]]
 
-            # binarise: each element has N rows, each row is a one-hot 
-            # vector, where N is the num of data points
-            vectors = lb.fit_transform(data.values)
-            vector_set.append(vectors)
+        #     # binarise: each element has N rows, each row is a one-hot 
+        #     # vector, where N is the num of data points
+        #     vectors = lb.fit_transform(data.values)
+        #     vector_set.append(vectors)
+        
+        # with credit https://pbpython.com/categorical-encoding.html
+        # a dict for translating the strings into numeric values
+        str2num_dict = {}
+        str2num_dict["pol_coverage"] = {"Maxi":0,'Maxi':1, 'Median2':2, 'Median1':3,
+        'Mini':4}
+        str2num_dict["pol_pay_freq"] = {"Yearly":0, "Monthly":1, 'Biannual':2, 
+        "Quarterly":3}
+        str2num_dict["pol_usage"] = {"WorkPrivate":0,"Professional":1,"AllTrips":2,"Retired":3}
+        str2num_dict["vh_fuel"] = {"Diesel":0, "Gasoline":1, "Hybrid":2}
+
+        dat.replace(str2num_dict, inplace=True)
 
         ##############################################################
         # Handeling (normalise) features with non-numeric values
@@ -255,8 +267,11 @@ class PricingModel():
         ##############################################################
         # Merge the processed features into a clean training set
         ##############################################################
-        for feature in vector_set:
-            X = np.append(X,feature,axis=1)
+        # for feature in vector_set:
+        #     X = np.append(X,feature,axis=1)
+
+
+        print('processed data size is {}'.format(X.shape))
 
         return X
 
@@ -293,7 +308,7 @@ class PricingModel():
         ##############################################################
         # Reconfigurate the input size of the base_classifier
         ##############################################################
-        self.base_classifier.model.setNetwork(X_clean.shape[1])
+        #self.base_classifier.model.setNetwork(X_clean.shape[1])
 
         
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
@@ -359,9 +374,9 @@ class PricingModel():
         print('In predict_premium: the input has shape {}'.format(X_raw.shape))
 
         # Guassian noise N~(0,y_std)
-        noise = np.random.normal(self.y_mean*1.5,self.y_std/4,X_raw.shape[0])
+        noise = np.random.normal(self.y_mean*2,self.y_std/3,X_raw.shape[0])
         
-        #return self.predict_claim_probability(X_raw) * self.y_mean
+        #return self.predict_claim_probability(X_raw) * self.y_means
         price =  self.predict_claim_probability(X_raw) * self.y_mean + noise
 
         return price
