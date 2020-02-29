@@ -225,7 +225,7 @@ def ClaimClassifierHyperParameterSearch(X_raw, y_raw):  # ENSURE TO ADD IN WHATE
             for epoch in epochs:
 
                 # Evaluate model using K-fold cross validation
-                k = 5
+                k = 10
                 kf = KFold(n_splits=k)
                 total_accuracy = 0
                 for train_index, test_index in kf.split(X_raw):
