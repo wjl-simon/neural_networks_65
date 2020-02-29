@@ -317,8 +317,6 @@ class PricingModel():
         # =============================================================
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
 
-        print('In predict_claim_probability: the input has shape {}'.format(X_raw.shape))
-
         X_clean = self._preprocessor(X_raw.values)
         
         # return probabilities for the positive class (label 1)
@@ -349,11 +347,12 @@ class PricingModel():
         # For example you could scale all your prices down by a factor
 
         # Guassian noise N~(0,y_std)
-        noise = np.random.normal(self.y_mean*1.6,self.y_std/4,X_raw.shape[0])
+        noise = np.random.normal(self.y_mean*0.4,self.y_std/10,X_raw.shape[0])
         
         #return self.predict_claim_probability(X_raw) * self.y_means
-        price =  self.predict_claim_probability(X_raw) * self.y_mean + noise
-
+        #price =  self.predict_claim_probability(X_raw) * 2 * self.y_mean + noise
+        price = self.predict_claim_probability(X_raw) * 100 * self.y_mean + noise
+        
         return price
 
     
