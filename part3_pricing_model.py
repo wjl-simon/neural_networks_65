@@ -312,12 +312,12 @@ class PricingModel():
         # =============================================================
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
         X_clean = self._preprocessor(X_raw)
-
+        
         # return probabilities for the positive class (label 1)
         score = self.base_classifier.predict_proba(X_clean)
 
-        #temp = np.exp(score)
-        return score # softmax
+        return score.reshape((len(score),1))
+
 
     def predict_premium(self, X_raw):
         """Predicts premiums based on the pricing model.
@@ -341,13 +341,14 @@ class PricingModel():
         # For example you could scale all your prices down by a factor
 
         # Guassian noise N~(0,y_std)
-        noise = np.random.normal(self.y_mean*0.8,self.y_std/5,X_raw.shape[0])
-        # print(self.y_mean)
-        # print(self.y_std)
-        # print(noise.shape)
+        noise = np.random.normal(self.y_mean*1.2,self.y_std/5,X_raw.shape[0])
 
         #return self.predict_claim_probability(X_raw) * self.y_mean
-        return self.predict_claim_probability(X_raw) * self.y_mean + noise
+        price =  self.predict_claim_probability(X_raw) * self.y_mean + noise
+
+        return price
+
+    
 
     def save_model(self):
         """Saves the class instance as a pickle file."""
@@ -387,7 +388,7 @@ if __name__ == '__main__':
     X_test, y_test = test.iloc[:,:-1].values, test.iloc[:,-1].values
 
     # instantiate a model
-    pricePredictor = PricingModel(epoch_num = 10)
+    pricePredictor = PricingModel(epoch_num = 2)
 
     # severaity (claim_raw)
     #claims_raw = np.ones(y_train.shape[0])
@@ -419,9 +420,13 @@ if __name__ == '__main__':
     c1 = load_model()
     print(c1.predict_premium(X_test))
     print(c1.predict_claim_probability(X_test))
-    # # get the predicted claim probability
-    # freq_predict1 = c1.predict_claim_probability(X_test)
-    # # convert the probibility into Yes/No to compute test set accuracy
-    # predicted_result1 = np.round(freq_predict1)
-    # print('The test set accuracy on the frequency model is {}'. \
-    #     format(accuracy_score(predicted_result1, y_test)))
+    # get the predicted claim probability
+    freq_predict1 = c1.predict_claim_probability(X_test)
+
+
+    print('on the saved model, freq_predict1 has shape {}, y_test has {}'.format(freq_predict1.shape,y_test.shape))
+    
+    # convert the probibility into Yes/No to compute test set accuracy
+    predicted_result1 = np.round(freq_predict1)
+    print('The test set accuracy on the frequency model is {}'. \
+         format(accuracy_score(predicted_result1, y_test)))
