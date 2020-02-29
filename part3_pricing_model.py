@@ -299,7 +299,7 @@ class PricingModel():
 
         Parameters
         ----------
-        X_raw : ndarray
+        X_raw : pd.dataFrame
             This is the raw data as downloaded
 
         Returns
@@ -311,7 +311,7 @@ class PricingModel():
         """
         # =============================================================
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
-        X_clean = self._preprocessor(X_raw)
+        X_clean = self._preprocessor(X_raw.values)
         
         # return probabilities for the positive class (label 1)
         score = self.base_classifier.predict_proba(X_clean)
@@ -326,7 +326,7 @@ class PricingModel():
 
         Parameters
         ----------
-        X_raw : numpy.ndarray
+        X_raw : pd.dataFrame
             A numpy array, this is the raw data as downloaded
 
         Returns
@@ -342,14 +342,9 @@ class PricingModel():
 
         # Guassian noise N~(0,y_std)
         noise = np.random.normal(self.y_mean*1.2,self.y_std/5,X_raw.shape[0])
-
-        
-        print('noise shape {}'.format(noise.shape))
         
         #return self.predict_claim_probability(X_raw) * self.y_mean
         price =  self.predict_claim_probability(X_raw) * self.y_mean + noise
-
-        print('price shape {}'.format(price.shape))
 
         return price
 
@@ -389,8 +384,12 @@ if __name__ == '__main__':
     # Split data into training (80%) and test set (20%)
     train, test = train_test_split(df, test_size=0.2)
     # Split data into inputs and labels
+    
+    #traaining
     X_train, y_train = train.iloc[:,:-1].values, train.iloc[:,-1].values
-    X_test, y_test = test.iloc[:,:-1].values, test.iloc[:,-1].values
+
+    # testing
+    X_test_raw, y_test_raw = test.iloc[:,:-1], test.iloc[:,-1]
 
     # instantiate a model
     pricePredictor = PricingModel(epoch_num = 2)
@@ -399,19 +398,26 @@ if __name__ == '__main__':
     pricePredictor.fit(X_train, y_train, claims_raw)
 
     # get the predicted claim probability
-    X_test_clean = pricePredictor._preprocessor(X_test)
-    freq_predict = pricePredictor.base_classifier.predict_proba(X_test_clean)
+    # X_test_clean = pricePredictor._preprocessor(X_test_raw)
+    # freq_predict = pricePredictor.base_classifier.predict_proba(X_test_clean)
+
+    res1 = pricePredictor.predict_premium(X_test_raw)
+    res2 = pricePredictor.predict_claim_probability(X_test_raw)
+
+    print('the predicted price on test set is {}'.format(res1))
+    print('the predicted prob of claiming on test set is{}'.format(res2))
+
+
     # convert the probibility into Yes/No to compute test set accuracy
-    predicted_result = np.round(freq_predict)
     # test set (frequency model) accuracy
     #print('The test set accuracy on the frequency model is {}'. \
     #    format(accuracy_score(predicted_result, y_test)))
     
     # roc-auc on the frequency model
-    print('The ROC-AUC is {}'.format(roc_auc_score(y_test, predicted_result)))
+    print('The ROC-AUC is {}'.format(roc_auc_score(y_test_raw.values, res2)))
 
     # average amount of price is:
-    average_price = np.mean(pricePredictor.predict_premium(X_test))
+    average_price = np.mean(res1)
     print('Average price given by the price odel is {}'. \
         format(average_price))
 
