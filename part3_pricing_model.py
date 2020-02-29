@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 
-import random
+#import random
 from sklearn.utils import shuffle
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
@@ -314,7 +314,10 @@ class PricingModel():
         X_clean = self._preprocessor(X_raw)
 
         # return probabilities for the positive class (label 1)
-        return self.base_classifier.predict_proba(X_clean) 
+        score = self.base_classifier.predict_proba(X_clean)
+
+        temp = np.exp(score)
+        return temp / np.sum(temp) # softmax
 
     def predict_premium(self, X_raw):
         """Predicts premiums based on the pricing model.
@@ -338,8 +341,12 @@ class PricingModel():
         # For example you could scale all your prices down by a factor
 
         # Guassian noise N~(0,y_std)
-        noise = np.random.normal(0,self.y_std,X_raw.shape[0])
+        noise = np.random.normal(self.y_mean*0.8,self.y_std/5,X_raw.shape[0])
+        # print(self.y_mean)
+        # print(self.y_std)
+        # print(noise.shape)
 
+        #return self.predict_claim_probability(X_raw) * self.y_mean
         return self.predict_claim_probability(X_raw) * self.y_mean + noise
 
     def save_model(self):
@@ -380,7 +387,7 @@ if __name__ == '__main__':
     X_test, y_test = test.iloc[:,:-1].values, test.iloc[:,-1].values
 
     # instantiate a model
-    pricePredictor = PricingModel(epoch_num = 200)
+    pricePredictor = PricingModel(epoch_num = 150)
 
     # severaity (claim_raw)
     #claims_raw = np.ones(y_train.shape[0])
@@ -389,7 +396,8 @@ if __name__ == '__main__':
     pricePredictor.fit(X_train, y_train, claims_raw)
 
     # get the predicted claim probability
-    freq_predict = pricePredictor.predict_claim_probability(X_test)
+    X_test_clean = pricePredictor._preprocessor(X_test)
+    freq_predict = pricePredictor.base_classifier.predict_proba(X_test_clean)
     # convert the probibility into Yes/No to compute test set accuracy
     predicted_result = np.round(freq_predict)
     # test set (frequency model) accuracy
@@ -401,9 +409,19 @@ if __name__ == '__main__':
 
     # average amount of price is:
     average_price = np.mean(pricePredictor.predict_premium(X_test))
-    print('Average claim price given by the price odel is {}'. \
+    print('Average price given by the price odel is {}'. \
         format(average_price))
 
     # save the model
     print('Saving the model')
     pricePredictor.save_model()
+
+    c1 = load_model()
+    print(c1.predict_premium(X_test))
+    print(c1.predict_claim_probability(X_test))
+    # # get the predicted claim probability
+    # freq_predict1 = c1.predict_claim_probability(X_test)
+    # # convert the probibility into Yes/No to compute test set accuracy
+    # predicted_result1 = np.round(freq_predict1)
+    # print('The test set accuracy on the frequency model is {}'. \
+    #     format(accuracy_score(predicted_result1, y_test)))
