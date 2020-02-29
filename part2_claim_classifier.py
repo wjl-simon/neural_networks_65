@@ -273,7 +273,7 @@ def main():
     # From KFold, Best parameters lr=0.001, bs=64 epochs=100
     # Create classifier
     claimClassifier = ClaimClassifier()
-    claimClassifier.set_hyperparameters(lr=0.001, batch_size=64, epoch=1)
+    claimClassifier.set_hyperparameters(lr=0.001, batch_size=64, epoch=100)
     # Train classifier
     claimClassifier.fit(X_train, y_train)
     # Evaluate classifier
