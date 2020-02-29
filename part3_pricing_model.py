@@ -349,7 +349,7 @@ class PricingModel():
         # For example you could scale all your prices down by a factor
 
         # Guassian noise N~(0,y_std)
-        noise = np.random.normal(self.y_mean*1.3,self.y_std/3,X_raw.shape[0])
+        noise = np.random.normal(self.y_mean*1.6,self.y_std/4,X_raw.shape[0])
         
         #return self.predict_claim_probability(X_raw) * self.y_means
         price =  self.predict_claim_probability(X_raw) * self.y_mean + noise
