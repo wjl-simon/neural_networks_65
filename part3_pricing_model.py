@@ -100,8 +100,24 @@ class FreqClassifier(Net):
 
 
     def predict_proba(self,X_clean):
-        X_test = torch.tensor(X_clean, dtype=torch.float)
+        """predict probability function.
 
+        Gives the predicted probability of claiming
+
+        Parameters
+        ----------
+        X_clean : ndarray
+            An array, this is the processed clean test set feature
+
+        Returns
+        -------
+        out: ndarray
+            A 1d np array of the predicted probability of claiming.
+        """
+
+        print('In FreqClassifier.predict_proba() the input of type {} has shape {}'.format(X_clean.dtype, X_clean.shape))
+        X_test = torch.tensor(X_clean, dtype=torch.float)
+        print('In FreqClassifier.predict_proba() converted to tensor has shape {}'.format(X_test.shape))
         out = np.zeros(X_test.shape[0])
         for i in range(len(out)):
             out[i] = self.model(X_test[i])
@@ -175,9 +191,6 @@ class PricingModel():
         dat.columns = heading
 
         # drop the useless features
-        # drop_list = ['id_policy','vh_model','vh_make','pol_insee_code',\
-        #     'regional_department_code','commune_code', 'canton_code', \
-        #         'city_district_code','town_surface_area']
         drop_list = ['id_policy', 'pol_insee_code','drv_age2', 'drv_sex2', 'vh_make', \
             'vh_model','vh_type','town_mean_altitude', 'town_surface_area', \
                 'commune_code', 'canton_code', 'city_district_code', \
@@ -224,13 +237,11 @@ class PricingModel():
         # Handeling (normalise) features with non-numeric values
         ##############################################################
 
-
         #handel the missing cells and those outliers with non-numeric values
         # dat['pol_insee_code'] = pd.to_numeric(dat['pol_insee_code'],errors='coerce')
         # dat['regional_department_code'] = pd.to_numeric(dat['regional_department_code'],errors='coerce')
 
         # dat.replace(np.nan, -1, regex=True, inplace=True)
-
 
         data = dat.values
         # scaler/normaliser
@@ -311,6 +322,9 @@ class PricingModel():
         """
         # =============================================================
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
+
+        print('In predict_claim_probability: the input has shape {}'.format(X_raw.shape))
+
         X_clean = self._preprocessor(X_raw.values)
         
         # return probabilities for the positive class (label 1)
@@ -340,8 +354,10 @@ class PricingModel():
         # REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
         # For example you could scale all your prices down by a factor
 
+        print('In predict_premium: the input has shape {}'.format(X_raw.shape))
+
         # Guassian noise N~(0,y_std)
-        noise = np.random.normal(self.y_mean*1.2,self.y_std/5,X_raw.shape[0])
+        noise = np.random.normal(self.y_mean*1.5,self.y_std/4,X_raw.shape[0])
         
         #return self.predict_claim_probability(X_raw) * self.y_mean
         price =  self.predict_claim_probability(X_raw) * self.y_mean + noise
@@ -397,22 +413,23 @@ if __name__ == '__main__':
     # training
     pricePredictor.fit(X_train, y_train, claims_raw)
 
+    # save the model
+    print('Saving the model')
+    pricePredictor.save_model()
+
     # get the predicted claim probability
     # X_test_clean = pricePredictor._preprocessor(X_test_raw)
     # freq_predict = pricePredictor.base_classifier.predict_proba(X_test_clean)
 
-    res1 = pricePredictor.predict_premium(X_test_raw)
-    res2 = pricePredictor.predict_claim_probability(X_test_raw)
+    # load model
+    classifier = load_model()
+
+    res1 = classifier.predict_premium(X_test_raw)
+    res2 = classifier.predict_claim_probability(X_test_raw)
 
     print('the predicted price on test set is {}'.format(res1))
     print('the predicted prob of claiming on test set is{}'.format(res2))
 
-
-    # convert the probibility into Yes/No to compute test set accuracy
-    # test set (frequency model) accuracy
-    #print('The test set accuracy on the frequency model is {}'. \
-    #    format(accuracy_score(predicted_result, y_test)))
-    
     # roc-auc on the frequency model
     print('The ROC-AUC is {}'.format(roc_auc_score(y_test_raw.values, res2)))
 
@@ -421,6 +438,4 @@ if __name__ == '__main__':
     print('Average price given by the price odel is {}'. \
         format(average_price))
 
-    # save the model
-    print('Saving the model')
-    pricePredictor.save_model()
+   
