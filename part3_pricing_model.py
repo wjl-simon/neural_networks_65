@@ -14,6 +14,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.utils import shuffle
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
+from sklearn.metrics import confusion_matrix
 
 
 def fit_and_calibrate_classifier(classifier, X, y):
@@ -112,9 +113,6 @@ class FreqClassifier(Net):
             out[i,1] = self.model(X_test[i])
         
         out[:,0] = 1- out[:,1]
-
-        print('The size of out is {}'.format(out.shape))
-        print(out)
 
         return out
 
@@ -405,7 +403,7 @@ if __name__ == '__main__':
     X_test_raw, y_test_raw = test.iloc[:,:-1], test.iloc[:,-1]
 
     # instantiate a model
-    pricePredictor = PricingModel(epoch_num = 100)
+    pricePredictor = PricingModel(epoch_num = 200)
 
     # training
     pricePredictor.fit(X_train, y_train, claims_raw)
@@ -427,6 +425,9 @@ if __name__ == '__main__':
     print('the predicted price on test set is {}'.format(res1))
     print('the predicted prob of claiming on test set is{}'.format(res2))
 
+    print('The confusion matrix for the claiming is')
+    print(confusion_matrix(y_test_raw, np.round(res2)))
+    
     # roc-auc on the frequency model
     print('The ROC-AUC is {}'.format(roc_auc_score(y_test_raw.values, res2)))
 
