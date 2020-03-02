@@ -60,6 +60,7 @@ class FreqClassifier(Net):
         self.batch_size = batch_size
         self.epoch_num = epoch_num
         self.model = Net()
+        self.classes_ = [0,1]
 
     def fit(self,X_clean,y_raw):
         # define the optimiser
@@ -106,9 +107,14 @@ class FreqClassifier(Net):
             A 1d np array of the predicted probability of claiming.
         """
         X_test = torch.tensor(X_clean, dtype=torch.float)
-        out = np.zeros(X_test.shape[0])
+        out = np.zeros((X_test.shape[0],2))
         for i in range(len(out)):
-            out[i] = self.model(X_test[i])
+            out[i,1] = self.model(X_test[i])
+        
+        out[:,0] = 1- out[:,1]
+
+        print('The size of out is {}'.format(out.shape))
+        print(out)
 
         return out
 
@@ -116,7 +122,7 @@ class FreqClassifier(Net):
 # class for part 3
 class PricingModel():
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY
-    def __init__(self, calibrate_probabilities=False,batch_size=200, epoch_num=100):
+    def __init__(self, calibrate_probabilities=True,batch_size=200, epoch_num=100):
         """
         Feel free to alter this as you wish, adding instance variables as
         necessary.
@@ -322,7 +328,7 @@ class PricingModel():
         # return probabilities for the positive class (label 1)
         score = self.base_classifier.predict_proba(X_clean)
 
-        return score
+        return score[:,1]
 
 
     def predict_premium(self, X_raw):
@@ -351,7 +357,7 @@ class PricingModel():
         
         #return self.predict_claim_probability(X_raw) * self.y_means
         #price =  self.predict_claim_probability(X_raw) * 2 * self.y_mean + noise
-        price = self.predict_claim_probability(X_raw) * 10 * self.y_mean + noise
+        price = self.predict_claim_probability(X_raw) * 2 * self.y_mean + noise
         
         return price
 
@@ -399,7 +405,7 @@ if __name__ == '__main__':
     X_test_raw, y_test_raw = test.iloc[:,:-1], test.iloc[:,-1]
 
     # instantiate a model
-    pricePredictor = PricingModel(epoch_num = 200)
+    pricePredictor = PricingModel(epoch_num = 100)
 
     # training
     pricePredictor.fit(X_train, y_train, claims_raw)
